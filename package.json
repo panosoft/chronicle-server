@@ -1,0 +1,46 @@
+{
+  "name": "@panosoft/chronicle-server",
+  "version": "0.1.0",
+  "description": "An HTTPS Chronicle Server.",
+  "main": "lib/index.js",
+  "bin": {
+    "chronicle-server": "bin/index.js"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha",
+    "test:debug": "mocha --debug-brk"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/panosoft/chronicle-server.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/panosoft/chronicle-server/issues"
+  },
+  "homepage": "https://github.com/panosoft/chronicle-server#readme",
+  "dependencies": {
+    "@panosoft/chronicle": "^0.10.3",
+    "@panosoft/ramda-utils": "^0.2.5",
+    "bunyan": "^1.5.1",
+    "co": "^4.6.0",
+    "co-body": "^4.0.0",
+    "commander": "^2.9.0",
+    "is_js": "^0.7.6",
+    "mime-types": "^2.1.9",
+    "parse-headers": "^2.0.1",
+    "ramda": "^0.19.1",
+    "read-pkg-up": "^1.0.1",
+    "uuid": "^2.0.1"
+  },
+  "devDependencies": {
+    "chai": "^3.4.1",
+    "chai-as-promised": "^5.2.0",
+    "concat-stream": "^1.5.1",
+    "mocha": "^2.3.4"
+  }
+}
