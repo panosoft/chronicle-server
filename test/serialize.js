@@ -58,6 +58,8 @@ describe('serialize', () => {
     const result = serialize(req);
     expect(result).to.be.an('object')
       .and.to.have.all.keys('id', 'method', 'url', 'httpVersion', 'headers', 'connection');
+    expect(result.connection).to.be.an('object')
+      .and.to.have.all.keys('remoteAddress', 'remoteFamily', 'remotePort');
   });
   it('handle a response', () => {
     const result = serialize(res);
