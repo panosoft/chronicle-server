@@ -37,11 +37,16 @@ const yieldable = (request, response) =>
     response.end();
     resolve();
   }, 1));
+const log = (request, response, log) => {
+  log('info', 'Test');
+  response.end();
+};
 const error = () => { throw new Error('Internal error'); };
 const rejection = () => Promise.reject(new Error('Rejected promise'));
 const routes = {
   '/ordinary': { POST: ordinary, DELETE: ordinary },
   '/yieldable': { GET: yieldable },
+  '/log': { GET: log },
   '/error': { POST: error },
   '/rejection': { POST: rejection }
 };
@@ -53,6 +58,7 @@ const expectError = (error) => {
 const expectRequest = (request) => {
   expect(request).to.be.an('object')
     .and.to.have.all.keys('id', 'method', 'url', 'httpVersion', 'headers', 'connection');
+  expect(request.id).to.be.a('string');
   expect(request.headers).to.be.an('object');
   expect(request.connection).to.be.an('object')
     .and.to.have.all.keys('remoteAddress', 'remoteFamily', 'remotePort');
@@ -60,7 +66,9 @@ const expectRequest = (request) => {
 const expectResponse = (response) => {
   expect(response).to.be.an('object')
     .and.to.have.all.keys('statusMessage', 'statusCode', 'headers');
-  expect(response.headers).to.be.an('object');
+  expect(response.headers).to.be.an('object')
+    .and.to.have.property('request-id')
+    .that.is.a('string');
 };
 const expectErrorRecord = (record, msg) => {
   expect(record).to.be.an('object')
@@ -107,14 +115,83 @@ describe('Router', () => {
       return server.listen(port);
     });
     afterEach(() => server.close());
+    it('accept ordinary handler function', co.wrap(function * () {
+      const path = '/ordinary';
+      const response = yield request('POST', `${host}${path}`);
+      // response
+      expect(response.statusCode).to.equal(200);
+      // logs
+      expect(buffer.records).to.have.length(2);
+      expectRequestRecord(buffer.records[0]);
+      expectResponseRecord(buffer.records[1]);
+    }));
+    it('accept yieldable handler function', co.wrap(function * () {
+      const path = '/yieldable';
+      const response = yield request('GET', `${host}${path}`);
+      // response
+      expect(response.statusCode).to.equal(200);
+      // logs
+      expect(buffer.records).to.have.length(2);
+      expectRequestRecord(buffer.records[0]);
+      expectResponseRecord(buffer.records[1]);
+    }));
+    it('set Request-Id header on all responses', co.wrap(function * () {
+      const path = '/ordinary';
+      const response = yield request('POST', `${host}${path}`);
+      expect(response.headers).to.be.an('object')
+        .and.to.contain.all.keys('request-id');
+      expect(response.headers['request-id']).to.be.a('string');
+  }));
+    it('include serialized request in handler logs', co.wrap(function * () {
+      const path = '/log';
+      yield request('GET', `${host}${path}`);
+      expect(buffer.records).to.have.length(3);
+      const record = buffer.records[1];
+      expect(record).to.be.an('object')
+        .and.to.contain.key('request');
+      expectRequest(record.request);
+    }));
+    it('handle ordinary handler function error', co.wrap(function * () {
+      const path = '/error';
+      const response = yield request('POST', `${host}${path}`);
+      // response
+      expect(response.statusCode).to.equal(500);
+      expect(response.headers).to.be.an('object')
+        .and.to.contain.all.keys('content-type');
+      expect(response.headers['content-type']).to.equal(mime.lookup('json'));
+      expect(response.body).to.be.an('object')
+        .and.to.have.all.keys('error')
+        .and.to.have.property('error').that.is.a('string');
+      // logs
+      expect(buffer.records).to.have.length(3);
+      expectRequestRecord(buffer.records[0]);
+      expectErrorRecord(buffer.records[1], /Internal server error./);
+      expectResponseRecord(buffer.records[2]);
+    }));
+    it('handle yieldable handler function promise rejection', co.wrap(function * () {
+      const path = '/rejection';
+      const response = yield request('POST', `${host}${path}`);
+      // response
+      expect(response.statusCode).to.equal(500);
+      expect(response.headers).to.be.an('object')
+        .and.to.contain.all.keys('content-type');
+      expect(response.headers['content-type']).to.equal(mime.lookup('json'));
+      expect(response.body).to.be.an('object')
+        .and.to.have.all.keys('error')
+        .and.to.have.property('error').that.is.a('string');
+      // logs
+      expect(buffer.records).to.have.length(3);
+      expectRequestRecord(buffer.records[0]);
+      expectErrorRecord(buffer.records[1], /Internal server error./);
+      expectResponseRecord(buffer.records[2]);
+    }));
     it('handle invalid pathnames', co.wrap(function * () {
       const path = '/invalid';
       const response = yield request('GET', `${host}${path}`);
       // response
       expect(response.statusCode).to.equal(404);
       expect(response.headers).to.be.an('object')
-        .and.to.contain.all.keys('request-id', 'content-type');
-      expect(response.headers['request-id']).to.be.a('string');
+        .and.to.contain.all.keys('content-type');
       expect(response.headers['content-type']).to.equal(mime.lookup('json'));
       expect(response.body).to.be.an('object')
         .and.to.have.all.keys('error')
@@ -131,8 +208,7 @@ describe('Router', () => {
       // response
       expect(response.statusCode).to.equal(405);
       expect(response.headers).to.be.an('object')
-        .and.to.contain.all.keys('request-id', 'content-type', 'allow');
-      expect(response.headers['request-id']).to.be.a('string');
+        .and.to.contain.all.keys('content-type', 'allow');
       expect(response.headers['content-type']).to.equal(mime.lookup('json'));
       expect(response.headers.allow).to.equal(R.join(',', R.keys(routes[path])));
       expect(response.body).to.be.an('object')
@@ -142,68 +218,6 @@ describe('Router', () => {
       expect(buffer.records).to.have.length(3);
       expectRequestRecord(buffer.records[0]);
       expectErrorRecord(buffer.records[1], /Method not allowed./);
-      expectResponseRecord(buffer.records[2]);
-    }));
-    it('accept ordinary handler function', co.wrap(function * () {
-      const path = '/ordinary';
-      const response = yield request('POST', `${host}${path}`);
-      // response
-      expect(response.statusCode).to.equal(200);
-      expect(response.headers).to.be.an('object')
-        .and.to.contain.all.keys('request-id');
-      expect(response.headers['request-id']).to.be.a('string');
-      // logs
-      expect(buffer.records).to.have.length(2);
-      expectRequestRecord(buffer.records[0]);
-      expectResponseRecord(buffer.records[1]);
-    }));
-    it('handle ordinary handler function error', co.wrap(function * () {
-      const path = '/error';
-      const response = yield request('POST', `${host}${path}`);
-      // response
-      expect(response.statusCode).to.equal(500);
-      expect(response.headers).to.be.an('object')
-        .and.to.contain.all.keys('request-id', 'content-type');
-      expect(response.headers['request-id']).to.be.a('string');
-      expect(response.headers['content-type']).to.equal(mime.lookup('json'));
-      expect(response.body).to.be.an('object')
-        .and.to.have.all.keys('error')
-        .and.to.have.property('error').that.is.a('string');
-      // logs
-      expect(buffer.records).to.have.length(3);
-      expectRequestRecord(buffer.records[0]);
-      expectErrorRecord(buffer.records[1], /Internal server error./);
-      expectResponseRecord(buffer.records[2]);
-    }));
-    it('accept yieldable handler function', co.wrap(function * () {
-      const path = '/yieldable';
-      const response = yield request('GET', `${host}${path}`);
-      // response
-      expect(response.statusCode).to.equal(200);
-      expect(response.headers).to.be.an('object')
-        .and.to.contain.all.keys('request-id');
-      expect(response.headers['request-id']).to.be.a('string');
-    // logs
-      expect(buffer.records).to.have.length(2);
-      expectRequestRecord(buffer.records[0]);
-      expectResponseRecord(buffer.records[1]);
-    }));
-    it('handle yieldable handler function rejection', co.wrap(function * () {
-      const path = '/rejection';
-      const response = yield request('POST', `${host}${path}`);
-      // response
-      expect(response.statusCode).to.equal(500);
-      expect(response.headers).to.be.an('object')
-        .and.to.contain.all.keys('request-id', 'content-type');
-      expect(response.headers['request-id']).to.be.a('string');
-      expect(response.headers['content-type']).to.equal(mime.lookup('json'));
-      expect(response.body).to.be.an('object')
-        .and.to.have.all.keys('error')
-        .and.to.have.property('error').that.is.a('string');
-      // logs
-      expect(buffer.records).to.have.length(3);
-      expectRequestRecord(buffer.records[0]);
-      expectErrorRecord(buffer.records[1], /Internal server error./);
       expectResponseRecord(buffer.records[2]);
     }));
   });
