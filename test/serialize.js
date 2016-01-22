@@ -35,8 +35,7 @@ const handle = (request, response) => {
   res.end();
 };
 const routes = { '/': { GET: handle }};
-const router = Router.create({}, routes);
-const server = Server.create({ key, cert }, router.route);
+const server = Server.create({ key, cert }, routes);
 
 describe('serialize', () => {
   before(co.wrap(function * () {

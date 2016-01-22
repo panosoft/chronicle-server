@@ -96,7 +96,6 @@ describe('Router', () => {
   });
   describe('route', () => {
     var buffer;
-    var router;
     var server;
     beforeEach(() => {
       buffer = new bunyan.RingBuffer();
@@ -104,21 +103,19 @@ describe('Router', () => {
         name: 'test',
         streams: [{type: 'raw', stream: buffer}]
       });
-      router = Router.create({ logger }, routes);
-      server = Server.create({ key, cert }, router.route);
+      server = Server.create({ key, cert, logger }, routes);
       return server.listen(port);
     });
     afterEach(() => server.close());
-    it('exists', () =>
-      expect(router.route).to.be.a('function')
-    );
     it('handle invalid pathnames', co.wrap(function * () {
       const path = '/invalid';
       const response = yield request('GET', `${host}${path}`);
       // response
       expect(response.statusCode).to.equal(404);
-      expect(response.headers).to.have.property('content-type')
-        .that.equals(mime.lookup('json'));
+      expect(response.headers).to.be.an('object')
+        .and.to.contain.all.keys('request-id', 'content-type');
+      expect(response.headers['request-id']).to.be.a('string');
+      expect(response.headers['content-type']).to.equal(mime.lookup('json'));
       expect(response.body).to.be.an('object')
         .and.to.have.all.keys('error')
         .and.to.have.property('error').that.is.a('string');
@@ -133,10 +130,11 @@ describe('Router', () => {
       const response = yield request('GET', `${host}${path}`);
       // response
       expect(response.statusCode).to.equal(405);
-      expect(response.headers).to.have.property('allow')
-        .that.equals(R.join(',', R.keys(routes[path])));
-      expect(response.headers).to.have.property('content-type')
-        .that.equals(mime.lookup('json'));
+      expect(response.headers).to.be.an('object')
+        .and.to.contain.all.keys('request-id', 'content-type', 'allow');
+      expect(response.headers['request-id']).to.be.a('string');
+      expect(response.headers['content-type']).to.equal(mime.lookup('json'));
+      expect(response.headers.allow).to.equal(R.join(',', R.keys(routes[path])));
       expect(response.body).to.be.an('object')
         .and.to.have.all.keys('error')
         .and.to.have.property('error').that.is.a('string');
@@ -151,6 +149,9 @@ describe('Router', () => {
       const response = yield request('POST', `${host}${path}`);
       // response
       expect(response.statusCode).to.equal(200);
+      expect(response.headers).to.be.an('object')
+        .and.to.contain.all.keys('request-id');
+      expect(response.headers['request-id']).to.be.a('string');
       // logs
       expect(buffer.records).to.have.length(2);
       expectRequestRecord(buffer.records[0]);
@@ -161,8 +162,10 @@ describe('Router', () => {
       const response = yield request('POST', `${host}${path}`);
       // response
       expect(response.statusCode).to.equal(500);
-      expect(response.headers).to.have.property('content-type')
-        .that.equals(mime.lookup('json'));
+      expect(response.headers).to.be.an('object')
+        .and.to.contain.all.keys('request-id', 'content-type');
+      expect(response.headers['request-id']).to.be.a('string');
+      expect(response.headers['content-type']).to.equal(mime.lookup('json'));
       expect(response.body).to.be.an('object')
         .and.to.have.all.keys('error')
         .and.to.have.property('error').that.is.a('string');
@@ -177,7 +180,10 @@ describe('Router', () => {
       const response = yield request('GET', `${host}${path}`);
       // response
       expect(response.statusCode).to.equal(200);
-      // logs
+      expect(response.headers).to.be.an('object')
+        .and.to.contain.all.keys('request-id');
+      expect(response.headers['request-id']).to.be.a('string');
+    // logs
       expect(buffer.records).to.have.length(2);
       expectRequestRecord(buffer.records[0]);
       expectResponseRecord(buffer.records[1]);
@@ -187,8 +193,10 @@ describe('Router', () => {
       const response = yield request('POST', `${host}${path}`);
       // response
       expect(response.statusCode).to.equal(500);
-      expect(response.headers).to.have.property('content-type')
-        .that.equals(mime.lookup('json'));
+      expect(response.headers).to.be.an('object')
+        .and.to.contain.all.keys('request-id', 'content-type');
+      expect(response.headers['request-id']).to.be.a('string');
+      expect(response.headers['content-type']).to.equal(mime.lookup('json'));
       expect(response.body).to.be.an('object')
         .and.to.have.all.keys('error')
         .and.to.have.property('error').that.is.a('string');

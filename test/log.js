@@ -9,28 +9,46 @@ const bunyanLogger = bunyan.createLogger({
 });
 
 describe('Log', () => {
-  it('curried', () => {
+  it('factory', () => {
     const log = Log(bunyanLogger);
-    expect(log).to.be.a('function');
-    const msg = 'Test';
-    log('info', msg);
-    expect(ringbuffer.records.pop()).to.be.an('object')
-      .and.to.have.property('msg').that.equals(msg);
+    expect(log).to.be.a('function')
+      .and.to.have.property('child')
+      .that.is.a('function');
   });
-  it('noop if logger undefined', () => {
-    const log = Log(null);
-    const msg = 'Test';
-    log('info', msg);
+  describe('log', () => {
+    it('noop if logger undefined', () => {
+      const log = Log(null);
+      const msg = 'Test';
+      log('info', msg);
+    });
+    it('write if logger defined', () => {
+      const log = Log(bunyanLogger);
+      expect(log).to.be.a('function');
+      const msg = 'Test';
+      log('info', msg);
+      const record = ringbuffer.records.pop();
+      expect(record).to.be.an('object')
+        .and.to.have.property('level').that.equals(bunyan.INFO);
+      expect(record).to.be.an('object')
+        .and.to.have.property('msg').that.equals(msg);
+    });
   });
-  it('write if logger defined', () => {
-    const log = Log(bunyanLogger);
-    expect(log).to.be.a('function');
-    const msg = 'Test';
-    log('info', msg);
-    const record = ringbuffer.records.pop();
-    expect(record).to.be.an('object')
-      .and.to.have.property('level').that.equals(bunyan.INFO);
-    expect(record).to.be.an('object')
-      .and.to.have.property('msg').that.equals(msg);
+  describe('log.child', () => {
+    it('return log that always includes supplied data', () => {
+      const log = Log(bunyanLogger);
+      const value = 1;
+
+      const objectLog = log.child({ value });
+      expect(objectLog).to.be.a('function')
+        .and.to.have.property('child')
+        .that.is.a('function');
+
+      objectLog('info', 'Test');
+      const record = ringbuffer.records.pop();
+      expect(record).to.be.an('object')
+        .and.to.have.property('level').that.equals(bunyan.INFO);
+      expect(record).to.be.an('object')
+        .and.to.have.property('value').that.equals(value);
+    });
   });
 });

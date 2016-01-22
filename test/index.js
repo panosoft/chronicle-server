@@ -84,7 +84,7 @@ describe('chronicle-server', () => {
       const headers = { 'content-type': mime.lookup('txt') };
       const response = yield post(url, headers);
       // response
-      expect(response.statusCode).to.equal(415);
+      expect(response.statusCode).to.equal(500);
       expect(response.headers).to.have.property('content-type')
         .that.equals(mime.lookup('json'));
       expect(response.body).to.be.an('object')
@@ -92,14 +92,14 @@ describe('chronicle-server', () => {
         .and.to.have.property('error').that.is.a('string');
       // logs
       expect(buffer.records).to.have.length(3);
-      expectErrorRecord(buffer.records[1], /Unsupported media type./, /request content-type must be/);
+      expectErrorRecord(buffer.records[1], /Internal server error./, /request content-type must be/);
     }));
     it('reject request if body is not an object', co.wrap(function * () {
       const headers = { 'content-type': mime.lookup('json') };
       const data = JSON.stringify(['test']);
       const response = yield post(url, headers, data);
       // response
-      expect(response.statusCode).to.equal(400);
+      expect(response.statusCode).to.equal(500);
       expect(response.headers).to.have.property('content-type')
         .that.equals(mime.lookup('json'));
       expect(response.body).to.be.an('object')
@@ -107,14 +107,14 @@ describe('chronicle-server', () => {
         .and.to.have.property('error').that.is.a('string');
       // logs
       expect(buffer.records).to.have.length(3);
-      expectErrorRecord(buffer.records[1], /Bad request./, /body must be an object./);
+      expectErrorRecord(buffer.records[1], /Internal server error./, /body must be an object./);
     }));
     it('reject request if body report field is not defined', co.wrap(function * () {
       const headers = { 'content-type': mime.lookup('json') };
       const data = JSON.stringify({});
       const response = yield post(url, headers, data);
       // response
-      expect(response.statusCode).to.equal(400);
+      expect(response.statusCode).to.equal(500);
       expect(response.headers).to.have.property('content-type')
         .that.equals(mime.lookup('json'));
       expect(response.body).to.be.an('object')
@@ -122,14 +122,14 @@ describe('chronicle-server', () => {
         .and.to.have.property('error').that.is.a('string');
       // logs
       expect(buffer.records).to.have.length(3);
-      expectErrorRecord(buffer.records[1], /Bad request./, /report field must be defined./);
+      expectErrorRecord(buffer.records[1], /Internal server error./, /report field must be defined./);
     }));
     it('reject request if body report field is not a string', co.wrap(function * () {
       const headers = { 'content-type': mime.lookup('json') };
       const data = JSON.stringify({ report: {} });
       const response = yield post(url, headers, data);
       // response
-      expect(response.statusCode).to.equal(400);
+      expect(response.statusCode).to.equal(500);
       expect(response.headers).to.have.property('content-type')
         .that.equals(mime.lookup('json'));
       expect(response.body).to.be.an('object')
@@ -137,7 +137,7 @@ describe('chronicle-server', () => {
         .and.to.have.property('error').that.is.a('string');
       // logs
       expect(buffer.records).to.have.length(3);
-      expectErrorRecord(buffer.records[1], /Bad request./, /report field must be a string./);
+      expectErrorRecord(buffer.records[1], /Internal server error./, /report field must be a string./);
     }));
     it('accept valid request and return output', co.wrap(function * () {
       const headers = { 'content-type': mime.lookup('json') };
@@ -150,8 +150,8 @@ describe('chronicle-server', () => {
       expect(response.headers).to.have.property('content-type')
         .that.equals(mime.lookup('json'));
       expect(response.body).to.be.an('object')
-        .and.to.have.all.keys('result')
-        .and.to.have.property('result').that.equals(parameters);
+        .and.to.have.all.keys('result');
+      expect(response.body.result).to.equal(parameters);
       // logs
       expect(buffer.records).to.have.length(4);
       expectRunningRecord(buffer.records[1]);

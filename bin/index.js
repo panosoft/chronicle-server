@@ -4,6 +4,7 @@ const bunyan = require('bunyan');
 const ChronicleServer = require('../lib');
 const co = require('co');
 const fs = require('fs');
+const Log = require('../lib/log');
 const os = require('os');
 const path = require('path');
 const program = require('commander');
@@ -12,30 +13,31 @@ const readPkgUp = require('read-pkg-up');
 const serialize = require('../lib/serialize');
 
 var server;
-const log = bunyan.createLogger({ name: 'chronicle-server' });
+const logger = bunyan.createLogger({ name: 'chronicle-server' });
+const log = Log(logger);
 const shutdown = co.wrap(function * (code) {
   code = R.defaultTo(0, code);
   if (server) {
-    log.info({ connections: yield server.connections() }, 'Stopping server ...');
+    log('info', { connections: yield server.connections() }, 'Stopping server.');
     yield server.close();
-    log.info({ connections: yield server.connections() }, 'Server stopped.');
+    log('info', { connections: yield server.connections() }, 'Server stopped.');
   }
   process.exit(code);
 });
 process.on('uncaughtException', (error) => {
-  log.fatal({ error: serialize(error) }, 'Uncaught Exception');
+  log('fatal', { error: serialize(error) }, 'Uncaught Exception');
   shutdown(1);
 });
 process.on('unhandledRejection', (error) => {
-  log.fatal({ error: serialize(error) }, 'Unhandled Rejection');
+  log('fatal', { error: serialize(error) }, 'Unhandled Rejection');
   shutdown(1);
 });
 process.on('SIGINT', () => {
-  log.info('SIGINT received.');
+  log('info', 'SIGINT received.');
   shutdown();
 });
 process.on('SIGTERM', () => {
-  log.info('SIGTERM received.');
+  log('info', 'SIGTERM received.');
   shutdown();
 });
 
@@ -51,38 +53,41 @@ co(function * () {
       .option('-p, --port  <port>', 'The port to accept connections on. Default: 8443.')
       .option('-i, --interface  <interface>', 'The interface to accept connections on. Default: 0.0.0.0.')
       .parse(process.argv);
-    log.info({
+    log('info', {
       arch: process.arch,
       platform:process.platform,
       release: os.release(),
-      version: process.version,
+      node: process.version,
       cwd: process.cwd(),
-      argv: process.argv
-    });
-    log.info({ 'chronicle-server': pkg.version });
-    log.info({ arguments: R.pick(['key', 'cert', 'port', 'interface'], program) });
+      argv: process.argv,
+      'chronicle-server': pkg.version
+    }, 'Process details.');
     if (!program.key) throw new TypeError('--key must be specified');
     if (!program.cert) throw new TypeError('--cert must be specified');
 
-    log.info('Reading key ...');
-    const key = fs.readFileSync(path.resolve(program.key));
-    log.info('Key read.');
-    log.info('Reading cert ...');
-    const cert = fs.readFileSync(path.resolve(program.cert));
-    log.info('Cert read.');
+    const keyFilename = path.resolve(program.key);
+    log('info', { filename: keyFilename }, 'Reading key.');
+    const key = fs.readFileSync(keyFilename);
+    log('info', { filename: keyFilename }, 'Key read.');
+
+    const certFilename = path.resolve(program.cert);
+    log('info', { filename: certFilename }, 'Reading cert.');
+    const cert = fs.readFileSync(certFilename);
+    log('info', { filename: certFilename }, 'Cert read.');
+
     const port = program.port || 8443;
     const host = program.host;
 
-    log.info('Creating server ...');
-    server = ChronicleServer.create({ key, cert, log });
-    log.info('Server created.');
+    log('info', 'Creating server.');
+    server = ChronicleServer.create({ key, cert, logger });
+    log('info', 'Server created.');
 
-    log.info('Starting server ...');
+    log('info', 'Starting server.');
     yield server.listen(port, host);
-    log.info(server.address(), 'Server started.');
-}
-  catch (error) { // REVIEW necessary? would be caught by unhandledRejection
-    log.fatal(error);
+    log('info', server.address(), 'Server started.');
+  }
+  catch (error) {
+    log('fatal', { error: serialize(error) }, 'Failed to start.');
     shutdown(1);
   }
 });

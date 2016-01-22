@@ -1,4 +1,3 @@
-const bunyan = require('bunyan');
 const co = require('co');
 const expect = require('chai')
   .use(require('chai-as-promised'))
@@ -18,12 +17,15 @@ const get = (url) => new Promise((resolve, reject) =>
   https.get(R.merge(parse(url), { ca }), resolve)
     .on('error', reject)
 );
-const route = (request, response) => {
+const handle = (request, response) => {
   response.writeHead(200);
   response.end();
 };
+const routes = {
+  '/': { GET: handle }
+};
 
-const config = { key, cert };
+const options = { key, cert };
 const port = 8443;
 var server;
 
@@ -34,7 +36,7 @@ describe('Server', () => {
         .and.to.have.all.keys('create');
     });
     it('create instance', () => {
-      server = Server.create(config, route);
+      server = Server.create(options, routes);
       expect(server).to.be.an('object')
         .and.to.have.all.keys('address', 'close', 'connections', 'listen');
     });
