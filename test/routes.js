@@ -1,5 +1,5 @@
 const bunyan = require('bunyan');
-const ChronicleServer = require('../lib');
+const HttpsServer = require('@panosoft/https-server');
 const co = require('co');
 const concat = require('concat-stream');
 const expect = require('chai').expect;
@@ -8,6 +8,7 @@ const https = require('https');
 const mime = require('mime-types');
 const path = require('path');
 const R = require('ramda');
+const routes = require('../lib/routes');
 const url = require('url');
 
 const ca = fs.readFileSync(path.resolve(__dirname, 'credentials/rootCA.pem'));
@@ -62,8 +63,8 @@ const expectRanRecord = (record) => {
   expectBody(record.body);
 };
 
-describe('chronicle-server', () => {
-  describe('route: /', () => {
+describe('routes', () => {
+  describe('/', () => {
     var buffer;
     var server;
     const port = 8443;
@@ -75,8 +76,8 @@ describe('chronicle-server', () => {
         name: 'test',
         streams: [{type: 'raw', stream: buffer}]
       });
-      const config = { key, cert, logger };
-      server = ChronicleServer.create(config);
+      const options = { key, cert, logger };
+      server = HttpsServer.create(options, routes);
       return server.listen(port);
     });
     afterEach(() => server.close());
