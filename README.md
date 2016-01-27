@@ -41,7 +41,7 @@ Run a report with a set of parameters.
 - Headers:
   - Content-Type: `'application/json'`
 - Body:
-  - `report` - _(Required)_ _{String}_ Url of the report to run.
+  - `report` - _(Required)_ _{String}_ Url of the report bundle to run.
   - `parameters` - _{Object}_ An object of parameters to pass to report at runtime.
 
 ### Responses
