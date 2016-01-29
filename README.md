@@ -39,10 +39,10 @@ Run a report with a set of parameters.
 - Pathname: `/`
 - Method: `POST`
 - Headers:
-  - Content-Type: `'application/json'`
+  - `Content-Type` - `'application/json'`
 - Body:
-  - `report` - _(Required)_ _{String}_ Url of the report bundle to run.
-  - `parameters` - _{Object}_ An object of parameters to pass to report at runtime.
+  - `report` - {String} The url of the report bundle to run.
+  - `[parameters]` - {Object} The parameters to pass to report at runtime.
 
 ### Responses
 
@@ -50,16 +50,16 @@ __Success__
 
 - Status Code: `200`
 - Headers:
-  - Request-Id: _{String}_ The unique request identifier.
-  - Content-Type: `'application/json'`
+  - `Request-Id` - {String} The unique request identifier.
+  - `Content-Type` - `'application/json'`
 - Body:
-  - `result` - _{\*}_ The report output.
+  - `result` - {\*} The report output.
 
 __Error__
 
 - Status Code: `500`
 - Headers:
-  - Request-Id: _{String}_ The unique request identifier.
-  - Content-Type: `'application/json'`
+  - `Request-Id` - {String} The unique request identifier.
+  - `Content-Type` - `'application/json'`
 - Body:
-  - `error` - _{String}_ The error message.
+  - `error` - {String} The error message.
